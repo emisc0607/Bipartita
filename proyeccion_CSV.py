@@ -1,6 +1,7 @@
 import networkx as nx
 import pandas as pd
 from networkx.algorithms import bipartite
+import tkinter as tk
 
 def main():
     # Si el archivo tiene extensión .csv usar este comando
@@ -77,27 +78,43 @@ def main():
 
     print('Done!')
 
-def bipatita_CSV(file_path):
+def bipartita_CSV(file_path, text_widget):
     base = pd.read_csv(file_path)
-    print(base)
-    baseT= pd.melt(base, id_vars=["Persona"])
-    baseT["Psicol"]=baseT['variable'].astype(str)+"_R_"+baseT['value'].astype(str)
-    print(baseT)
+    text_widget.insert(tk.END, "Contenido del archivo CSV:\n")
+    text_widget.insert(tk.END, str(base) + "\n")
 
-    #Crea una gráfica bipartita
+    baseT = pd.melt(base, id_vars=["Persona"])
+    baseT["Psicol"] = baseT['variable'].astype(str) + "_R_" + baseT['value'].astype(str)
+    text_widget.insert(tk.END, "Transformación melt:\n")
+    text_widget.insert(tk.END, str(baseT) + "\n")
+
     B = nx.Graph()
-
-    #Añade a las Personas a un subconjunto de nodos y los Items al otro subconjunto
     B.add_nodes_from(baseT["Persona"].unique(), bipartite=0)
     B.add_nodes_from(baseT["Psicol"].unique(), bipartite=1)
-
-    # Añade aristas que conectan a las personas con sus respuestas psicológicas
     edges = baseT[["Persona", "Psicol"]].values.tolist()
     B.add_edges_from(edges)
+    text_widget.insert(tk.END, "¿La gráfica es bipartita?: {}\n".format(bipartite.is_bipartite(B)))
+    text_widget.insert(tk.END, "¿La gráfica es conexa?: {}\n".format(nx.is_connected(B)))
 
-    # Esta parte es solo para verificar que tenemos una gráfica bipartita
-    # la pueden omitir posteriormente
-    print("la gráfica es bipartita =")
-    print(bipartite.is_bipartite(B))
-    print("la gráfica es conexa =", nx.is_connected(B))
-    return
+    Persona, Psicol = bipartite.sets(B)
+    P = bipartite.weighted_projected_graph(B, Psicol)
+    CPsi = nx.community.louvain_communities(P, weight='weight')
+    df = pd.DataFrame(CPsi)
+    dfT = df.transpose()
+    dfT.to_csv('Comunidades_Psicol.csv', header=False, index=False)
+    text_widget.insert(tk.END, "Comunidades Psicol CSV:\n")
+    text_widget.insert(tk.END, str(dfT) + "\n")
+
+    nx.write_gexf(P, "Proyeccion_Psicol.gexf")
+
+    Q = bipartite.weighted_projected_graph(B, Persona)
+    CPer = nx.community.louvain_communities(Q, weight='weight')
+    df = pd.DataFrame(CPer)
+    dfT = df.transpose()
+    dfT.to_csv('Comunidades_Personas.csv', header=False, index=False)
+    text_widget.insert(tk.END, "Comunidades Personas CSV:\n")
+    text_widget.insert(tk.END, str(dfT) + "\n")
+
+    nx.write_gexf(Q, "Proyeccion_Personas.gexf")
+
+    text_widget.insert(tk.END, 'Done!\n')

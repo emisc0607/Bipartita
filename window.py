@@ -4,6 +4,8 @@ from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
 import matplotlib.pyplot as plt
+import sys
+
 
 #Stats imports
 import pyreadstat
@@ -17,32 +19,32 @@ import proyeccion_CSV
 
 def onClickListener():
     m = method.get()
-    if(m == 1):
+    if m == 1:
         file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-        
-    elif(m == 2):
+        text_widget = Text(vn, height=20, width=50)
+        text_widget.pack()
+        sys.stdout = text_widget
+        proyeccion_CSV.bipartita_CSV(file_path, text_widget)
+        sys.stdout = sys.__stdout__
+    elif m == 2:
         file_path = filedialog.askopenfilename(filetypes=[("EXCEL files", '*.xlsx')])
-
-    elif(m == 3):
+        # Agregar lógica para manejar archivos Excel
+    elif m == 3:
         file_path = filedialog.askopenfilename(filetypes=[("SPSS files", "*.sav")])
-        
+        # Agregar lógica para manejar archivos SPSS
     else:
         messagebox.showinfo('Alert', 'Select a valid method')
     return
 
+
+#Ventana 
 vn = tk.Tk()
 vn.title("Proyección Bipartita con Louvain Final")
-vn.geometry("250x300")
-val = tk.Entry(vn, width = 10)
-Label(vn, text= "x =").place(x= 70, y= 40)
-val.place(x = 95, y = 40)
-val2 = tk.Entry(vn, width = 10)
-Label(vn, text= "v =").place(x= 70, y= 100)
-val2.place(x = 95, y = 100)
-Button(vn, text='Calcular', command=onClickListener).place(x=90, y=150)
+vn.geometry("450x500")
 
 method = tk.IntVar()
-Radiobutton(vn, text='CSV', variable=method, value=1).place(x=95, y=200)
-Radiobutton(vn, text='EXCEL', variable=method, value=2).place(x=95, y=225)
-Radiobutton(vn, text='SPSS', variable=method, value=3).place(x=95, y=250)
+Radiobutton(vn, text='CSV', variable=method, value=1).pack(pady=10)
+Radiobutton(vn, text='EXCEL', variable=method, value=2).pack(pady=10)
+Radiobutton(vn, text='SPSS', variable=method, value=3).pack(pady=10)
+Button(vn, text='Calcular', command=onClickListener).pack(pady=10)
 vn.mainloop()
