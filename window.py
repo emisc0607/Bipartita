@@ -3,8 +3,6 @@ import tkinter as tk
 from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
-import matplotlib.pyplot as plt
-import sys
 
 # Stats imports
 import pyreadstat
@@ -30,13 +28,13 @@ def csv_manager(file_path, text_widget):
     b.add_edges_from(edges)
     if bipartite.is_bipartite(b):
         messagebox.showinfo(title="Informacion", message="La gráfica es bipartita")
+        # Modificacion de la ventana
+        vn.geometry("400x450")
+        # Generacion de la proyeccion
+        text_widget.insert(tk.END, "Contenido del archivo CSV:\n")
+        text_widget.insert(tk.END, str(base) + "\n")
         if nx.is_connected(b):
             messagebox.showinfo(title="Informacion", message="La gráfica es conexa")
-            # Modificacion de la ventana
-            vn.geometry("400x300")
-            # Generacion de la proyeccion
-            text_widget.insert(tk.END, "Contenido del archivo CSV:\n")
-            text_widget.insert(tk.END, str(base) + "\n")
             persona, psicol = bipartite.sets(b)
             p = bipartite.weighted_projected_graph(b, psicol)
             c_psi = nx.community.louvain_communities(p, weight='weight')
@@ -69,13 +67,13 @@ def xlsx_manager(file_path, text_widget):
     b.add_edges_from(edges)
     if bipartite.is_bipartite(b):
         messagebox.showinfo(title="Informacion", message="La gráfica es bipartita")
+        # Modificacion de la ventana
+        vn.geometry("400x450")
+        text_widget.insert(tk.END, "Contenido del archivo XLSX:\n")
+        text_widget.insert(tk.END, str(base) + "\n")
         if nx.is_connected(b):
             messagebox.showinfo(title="Informacion", message="La gráfica es conexa")
-            # Modificacion de la ventana
-            vn.geometry("400x300")
             # Generacion de la proyeccion
-            text_widget.insert(tk.END, "Contenido del archivo XLSX:\n")
-            text_widget.insert(tk.END, str(base) + "\n")
             persona, psicol = bipartite.sets(b)
             p = bipartite.weighted_projected_graph(b, psicol)
             c_psi = nx.community.louvain_communities(p, weight='weight')
@@ -97,8 +95,43 @@ def xlsx_manager(file_path, text_widget):
 
 
 # Manejo de archivos SAV
-def sav_manager(file_path):
+def sav_manager(file_path, text_widget):
     data, metadata = pyreadstat.read_sav(file_path)
+    data_reshaped = data.melt(id_vars=["Persona"], var_name="Reactivo", value_name="Respuesta")
+    data_reshaped["Psicol"] = data_reshaped["Reactivo"] + "_R_" + data_reshaped["Respuesta"].astype(str)
+    b = nx.Graph()
+    b.add_nodes_from(data_reshaped["Persona"].unique(), bipartite=0)
+    b.add_nodes_from(data_reshaped["Psicol"].unique(), bipartite=1)
+    edges = data_reshaped[["Persona", "Psicol"]].values.tolist()
+    b.add_edges_from(edges)
+    if bipartite.is_bipartite(b):
+        messagebox.showinfo(title="Informacion", message="La gráfica es bipartita")
+        # Modificacion de la ventana
+        vn.geometry("400x450")
+        text_widget.insert(tk.END, "Contenido del archivo XLSX:\n")
+        text_widget.insert(tk.END, str(data_reshaped) + "\n")
+        nx.write_gexf(b, "Bipartita_original.gexf")
+        if nx.is_connected(b):
+            messagebox.showinfo(title="Informacion", message="La gráfica es conexa")
+            # Comportamiento Conexo
+            persona, psicol = bipartite.sets(b)
+            p = bipartite.weighted_projected_graph(b, psicol)
+            c_psi = nx.community.louvain_communities(p, weight='weight')
+            df = pd.DataFrame(c_psi)
+            df_t = df.transpose()
+            df_t.to_csv('Comunidades_Psicol.csv', header=False, index=False)
+            nx.write_gexf(p, "Proyeccion_Psicol.gexf")
+            Q = bipartite.weighted_projected_graph(b, persona)
+            c_per = nx.community.louvain_communities(Q, weight='weight')
+            df = pd.DataFrame(c_per)
+            df_t = df.transpose()
+            df_t.to_csv('Comunidades_Personas.csv', header=False, index=False)
+            nx.write_gexf(Q, "Proyeccion_Personas.gexf")
+            messagebox.showinfo(title="¡Listo!", message="Proyección generada")
+        else:
+            messagebox.showerror(title="Error", message="La gráfica no es conexa")
+    else:
+        messagebox.showerror(title="Error", message="La gráfica no es bipartita")
 
 
 # Seleccion del tipo de archivo
@@ -115,7 +148,8 @@ def onclick():
         xlsx_manager(file_path, text_widget)
     elif m == 3:
         file_path = filedialog.askopenfilename(filetypes=[("SPSS files", "*.sav")])
-        sav_manager(file_path)
+        text_widget.pack(expand=True, fill='both')
+        sav_manager(file_path, text_widget)
     else:
         messagebox.showinfo('Alert', 'Select a valid method')
 
